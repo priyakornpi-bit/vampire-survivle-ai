@@ -1,0 +1,150 @@
+
+# คู่มือใช้งาน Vampire Survivors AI
+
+## 1. เตรียมระบบ
+
+ต้องมีสิ่งต่อไปนี้:
+
+- Windows
+- Visual Studio 2026 พร้อม C++ Desktop Development
+- Python virtual environment ที่โฟลเดอร์ `.venv`
+- เกม Vampire Survivors แบบ Windowed
+
+โปรแกรมใช้ port `8081` เพราะ port `8080` ถูกใช้งานโดย NVIDIA Broadcast ในเครื่องนี้
+
+## 2. เปิด C++ Server
+
+เปิด Terminal ในโฟลเดอร์โปรเจกต์:
+
+```powershell
+cd "D:\mini project\vampire survivle ai"
+.\build_server.bat
+.\VP_AI_SEVER.exe
+```
+
+ถ้าทำงานสำเร็จ จะแสดงข้อความ:
+
+```text
+[C++ Server] Listening on 127.0.0.1:8081
+```
+
+## 3. เปิด Python Client
+
+เปิด Terminal อีกหน้าต่าง:
+
+```powershell
+cd "D:\mini project\vampire survivle ai"
+.\.venv\Scripts\Activate.ps1
+python .\gemini-code-1790941411962.py --port 8081 --monitor left --fps 20 --focus --keys wasd
+```
+
+ความหมายของตัวเลือก:
+
+- `--port 8081` ใช้ port เดียวกับ C++ Server
+- `--region LEFT,TOP,WIDTH,HEIGHT` กรอบหน้าต่างเกมบน desktop
+- `--monitor left` จับภาพจอซ้ายเต็มจออัตโนมัติ
+- `--fps 20` ความถี่ในการจับภาพ
+- `--focus` คลิกเพื่อโฟกัสหน้าต่างเกมก่อนเริ่ม
+- `--keys wasd` ใช้ปุ่ม W/A/S/D
+- `--auto-upgrade` เลือกการ์ดอัปเกรดตัวเลือกแรกอัตโนมัติ
+- `--rl` เปิดใช้และฝึก Q-learning จากการเล่นจริง
+- `--q-table` กำหนดไฟล์เก็บความรู้ที่เรียนรู้ไว้
+
+ถ้าเกมใช้ปุ่มลูกศร ให้เปลี่ยนเป็น:
+
+```powershell
+--keys arrows
+```
+
+ถ้าต้องการให้เลือกอัปเกรดเอง ให้เพิ่ม `--auto-upgrade`:
+
+```powershell
+python .\gemini-code-1790941411962.py --port 8081 --monitor left --fps 20 --focus --keys wasd --auto-upgrade
+```
+
+ระบบจะตรวจแผง `Level Up` กลางจอโดยตรง หยุดการเดินชั่วคราว และกด `Enter` เลือกตัวเลือกแรกเพียงครั้งเดียวต่อหนึ่งหน้าจออัปเกรด
+
+## 4.1 เปิดโหมด Reinforcement Learning
+
+ใช้คำสั่งนี้เพื่อให้บอทเลือกทิศทางและเรียนรู้จากระยะห่างระหว่างผู้เล่น ศัตรู และ XP/ทอง:
+
+```powershell
+python .\gemini-code-1790941411962.py --port 8081 --monitor left --fps 20 --focus --keys wasd --rl --auto-upgrade
+```
+
+ความรู้จะถูกบันทึกใน `rl_q_table.json` และนำกลับมาใช้ในรอบถัดไป การเล่นรอบแรกอาจเคลื่อนที่สุ่มบ้าง ให้เล่นหลายรอบเพื่อให้ Q-table ปรับปรุง
+
+## 4. เลือกจอและกรอบเกม
+
+สำหรับจอซ้ายทั้งจอ ใช้คำสั่งนี้:
+
+```powershell
+python .\gemini-code-1790941411962.py --port 8081 --monitor left --fps 20 --focus --keys wasd
+```
+
+โปรแกรมตรวจตำแหน่งจอซ้ายจาก Windows ให้อัตโนมัติ รองรับพิกัดติดลบของจอที่อยู่ทางซ้าย
+
+ตัวอย่าง ถ้าจอหลักกว้าง `1920` pixels และเกมอยู่จอที่สองด้านขวา:
+
+```powershell
+python .\gemini-code-1790941411962.py --port 8081 --region 1920,0,1280,720 --fps 20 --focus --keys wasd
+```
+
+รูปแบบ region คือ:
+
+```text
+LEFT,TOP,WIDTH,HEIGHT
+```
+
+ดูตำแหน่งและความละเอียดจอได้ที่ `Settings > System > Display`
+
+## 5. ทดสอบโดยไม่กดปุ่มจริง
+
+ใช้ `--dry-run` เพื่อตรวจจับภาพและดูคำสั่งโดยไม่ควบคุมเกม:
+
+```powershell
+python .\gemini-code-1790941411962.py --port 8081 --region 100,100,1280,720 --fps 20 --focus --dry-run
+```
+
+ถ้าทำงานถูกต้อง จะเห็น log ลักษณะนี้:
+
+```text
+frame=0 player=(401, 489) enemy=(1248, 133) action=MOVE_LEFT
+```
+
+## 6. รันใน Terminal เดียว
+
+สามารถเปิด server เป็น background process แล้วรัน client ต่อได้:
+
+```powershell
+cd "D:\mini project\vampire survivle ai"
+.\build_server.bat
+Start-Process -FilePath ".\VP_AI_SEVER.exe" -ArgumentList "8081"
+.\.venv\Scripts\Activate.ps1
+python .\gemini-code-1790941411962.py --port 8081 --region 100,100,1280,720 --fps 20 --focus --keys wasd
+```
+
+## 7. หยุดโปรแกรม
+
+หยุด Python ด้วย:
+
+```text
+Ctrl+C
+```
+
+ถ้า C++ Server ยังทำงานอยู่ ให้หยุดด้วย:
+
+```powershell
+Get-Process VP_AI_SEVER -ErrorAction SilentlyContinue | Stop-Process
+```
+
+## 8. แก้ปัญหาเบื้องต้น
+
+- ตัวละครไม่เดิน: คลิกหน้าต่างเกม หรือใช้ `--focus`
+- เก็บ XP/ทอง: ตรวจว่าวัตถุในเกมเป็นสีฟ้าหรือเหลือง หากสีต่างกันต้องปรับ HSV ใน `detect_positions`
+- อัปเกรดไม่เลือก: เพิ่ม `--auto-upgrade` และตรวจว่าตัวเลือกแรกเป็นตำแหน่งที่ต้องการ
+- เกมใช้ลูกศร: ใช้ `--keys arrows`
+- ตรวจจับผิดจอ: ปรับค่า `--region`
+- ขึ้น `HTTP/1.1 400`: ตรวจว่าใช้ port `8081` ทั้ง server และ client
+- ขึ้น `Connection refused`: เปิด C++ Server ก่อน Python Client
+- ขึ้น `cl is not recognized`: เปิด Developer PowerShell for VS 2026 หรือใช้ `build_server.bat`
